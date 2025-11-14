@@ -7,12 +7,15 @@ import type {
   INodeType,
 } from '../types';
 import { NodeRegistry } from './NodeRegistry';
+import { ExpressionEngine } from './ExpressionEngine';
 
 export class WorkflowEngine {
   private nodeRegistry: NodeRegistry;
+  private expressionEngine: ExpressionEngine;
 
   constructor() {
     this.nodeRegistry = new NodeRegistry();
+    this.expressionEngine = new ExpressionEngine();
   }
 
   /**
@@ -37,31 +40,111 @@ export class WorkflowEngine {
         // Get input data from connected nodes
         const inputData = this.getNodeInputData(node, workflow.connections, nodeOutputs);
 
-        // Create execution context
-        const context: INodeExecutionContext = {
-          node,
-          inputData,
-          workflow,
-          getNodeParameter: (parameterName: string, defaultValue?: unknown) => {
-            return node.parameters[parameterName] ?? defaultValue;
-          },
-          helpers: {
-            httpRequest: async (options) => {
-              const axios = await import('axios');
-              const response = await axios.default({
-                method: options.method,
-                url: options.url,
-                headers: options.headers,
-                data: options.body,
-              });
-              return response.data;
-            },
-          },
-        };
+        // Process each input item and resolve expressions
+        const processedInputData: INodeExecutionData[][] = [];
 
-        // Execute node
-        const output = await nodeType.execute(context);
-        nodeOutputs[node.id] = output;
+        for (const inputBatch of inputData) {
+          const processedBatch: INodeExecutionData[] = [];
+
+          for (let itemIndex = 0; itemIndex < inputBatch.length; itemIndex++) {
+            const item = inputBatch[itemIndex];
+
+            // Resolve expressions in parameters for this specific item
+            const resolvedParameters = this.expressionEngine.resolveNodeParameters(
+              node.parameters,
+              {
+                currentItem: item,
+                currentNode: node,
+                workflow,
+                nodeOutputs,
+                itemIndex,
+              }
+            );
+
+            // Store resolved parameters temporarily for this execution
+            const nodeWithResolvedParams = {
+              ...node,
+              parameters: resolvedParameters,
+            };
+
+            // Create execution context
+            const context: INodeExecutionContext = {
+              node: nodeWithResolvedParams,
+              inputData: [[item]], // Single item for expression resolution
+              workflow,
+              getNodeParameter: (parameterName: string, defaultValue?: unknown) => {
+                return resolvedParameters[parameterName] ?? defaultValue;
+              },
+              helpers: {
+                httpRequest: async (options) => {
+                  const axios = await import('axios');
+                  const response = await axios.default({
+                    method: options.method,
+                    url: options.url,
+                    headers: options.headers,
+                    data: options.body,
+                  });
+                  return response.data;
+                },
+              },
+            };
+
+            // Execute node for this single item
+            const itemOutput = await nodeType.execute(context);
+
+            // Collect output from this item
+            if (itemOutput[0]) {
+              processedBatch.push(...itemOutput[0]);
+            }
+          }
+
+          processedInputData.push(processedBatch);
+        }
+
+        // If no input items (e.g., Start node), execute once with empty input
+        if (inputData.length === 0 || (inputData.length === 1 && inputData[0].length === 0)) {
+          const resolvedParameters = this.expressionEngine.resolveNodeParameters(
+            node.parameters,
+            {
+              currentItem: { json: {} },
+              currentNode: node,
+              workflow,
+              nodeOutputs,
+              itemIndex: 0,
+            }
+          );
+
+          const nodeWithResolvedParams = {
+            ...node,
+            parameters: resolvedParameters,
+          };
+
+          const context: INodeExecutionContext = {
+            node: nodeWithResolvedParams,
+            inputData: [[]],
+            workflow,
+            getNodeParameter: (parameterName: string, defaultValue?: unknown) => {
+              return resolvedParameters[parameterName] ?? defaultValue;
+            },
+            helpers: {
+              httpRequest: async (options) => {
+                const axios = await import('axios');
+                const response = await axios.default({
+                  method: options.method,
+                  url: options.url,
+                  headers: options.headers,
+                  data: options.body,
+                });
+                return response.data;
+              },
+            },
+          };
+
+          const output = await nodeType.execute(context);
+          nodeOutputs[node.id] = output;
+        } else {
+          nodeOutputs[node.id] = processedInputData;
+        }
       }
 
       return {
