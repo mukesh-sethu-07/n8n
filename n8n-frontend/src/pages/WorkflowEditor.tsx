@@ -31,36 +31,31 @@ export const WorkflowEditor: React.FC = () => {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="border-b px-6 py-4 bg-card">
-        <h1 className="text-2xl font-bold">n8n Workflow Automation</h1>
+    <div className="h-full flex bg-background">
+      {/* Left Sidebar - Workflows */}
+      <aside className="w-64 border-r p-4 overflow-auto bg-card">
+        <WorkflowList />
+      </aside>
+
+      {/* Center - Canvas */}
+      <main
+        className="flex-1 bg-gray-50 relative"
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+      >
         {currentWorkflow && (
-          <p className="text-sm text-muted-foreground mt-1">Editing: {currentWorkflow.name}</p>
+          <div className="absolute top-4 left-4 z-10 bg-white px-4 py-2 rounded-lg shadow-md border">
+            <p className="text-sm font-medium">{currentWorkflow.name}</p>
+            <p className="text-xs text-muted-foreground">{currentWorkflow.nodes.length} nodes</p>
+          </div>
         )}
-      </header>
+        <WorkflowCanvas />
+      </main>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Workflows */}
-        <aside className="w-64 border-r p-4 overflow-auto bg-card">
-          <WorkflowList />
-        </aside>
-
-        {/* Center - Canvas */}
-        <main
-          className="flex-1 bg-gray-50"
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-        >
-          <WorkflowCanvas />
-        </main>
-
-        {/* Right Sidebar - Node Palette */}
-        <aside className="w-64 border-l p-4 overflow-auto bg-card">
-          <NodePalette />
-        </aside>
-      </div>
+      {/* Right Sidebar - Node Palette */}
+      <aside className="w-64 border-l p-4 overflow-auto bg-card">
+        <NodePalette />
+      </aside>
     </div>
   );
 };
