@@ -8,10 +8,13 @@ interface CustomNodeProps {
   data: INode & {
     onDelete: () => void;
     onUpdate: (updates: Partial<INode>) => void;
+    onClick: () => void;
+    isSelected: boolean;
   };
+  selected?: boolean;
 }
 
-export const CustomNode = memo(({ data }: CustomNodeProps) => {
+export const CustomNode = memo(({ data, selected }: CustomNodeProps) => {
   const getNodeColor = (type: string): string => {
     const colors: Record<string, string> = {
       Start: 'bg-green-500',
@@ -27,9 +30,13 @@ export const CustomNode = memo(({ data }: CustomNodeProps) => {
 
   return (
     <div
+      onClick={data.onClick}
       className={cn(
-        'px-4 py-2 shadow-lg rounded-lg border-2 border-gray-300 bg-white min-w-[150px]',
-        'hover:shadow-xl transition-shadow'
+        'px-4 py-2 shadow-lg rounded-lg border-2 bg-white min-w-[150px] cursor-pointer',
+        'hover:shadow-xl transition-all',
+        selected || data.isSelected
+          ? 'border-primary ring-2 ring-primary/20'
+          : 'border-gray-300'
       )}
     >
       <Handle type="target" position={Position.Left} className="w-2 h-2" id="input-0" />
@@ -40,7 +47,10 @@ export const CustomNode = memo(({ data }: CustomNodeProps) => {
           <div className="text-sm font-medium text-gray-900">{data.name}</div>
         </div>
         <button
-          onClick={data.onDelete}
+          onClick={(e) => {
+            e.stopPropagation();
+            data.onDelete();
+          }}
           className="text-gray-400 hover:text-red-500 transition-colors p-1"
         >
           <Trash2 className="w-3 h-3" />

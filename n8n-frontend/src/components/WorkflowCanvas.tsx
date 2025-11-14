@@ -16,6 +16,7 @@ import 'reactflow/dist/style.css';
 import { useWorkflowStore } from '@/stores/workflowStore';
 import type { INode, IConnection } from '@/types';
 import { CustomNode } from './CustomNode';
+import { NodeDetailView } from './NodeDetailView';
 import { Button } from './ui/Button';
 import { Play, Save } from 'lucide-react';
 
@@ -26,12 +27,16 @@ const nodeTypes = {
 export const WorkflowCanvas: React.FC = () => {
   const {
     currentWorkflow,
+    nodeTypes: availableNodeTypes,
+    selectedNodeId,
+    executionResults,
     saveWorkflow,
     executeWorkflow,
     updateNode,
     deleteNode,
     addConnection,
     deleteConnection,
+    selectNode,
     isSaving,
     isExecuting,
   } = useWorkflowStore();
@@ -49,9 +54,12 @@ export const WorkflowCanvas: React.FC = () => {
       position: node.position,
       data: {
         ...node,
+        isSelected: selectedNodeId === node.id,
         onDelete: () => deleteNode(node.id),
         onUpdate: (updates: Partial<INode>) => updateNode(node.id, updates),
+        onClick: () => selectNode(node.id),
       },
+      selected: selectedNodeId === node.id,
     }));
 
     const reactFlowEdges: Edge[] = currentWorkflow.connections.map((conn: IConnection) => ({
@@ -64,7 +72,7 @@ export const WorkflowCanvas: React.FC = () => {
 
     setNodes(reactFlowNodes);
     setEdges(reactFlowEdges);
-  }, [currentWorkflow, setNodes, setEdges, deleteNode, updateNode]);
+  }, [currentWorkflow, selectedNodeId, setNodes, setEdges, deleteNode, updateNode, selectNode]);
 
   // Handle node position changes
   const handleNodesChange = useCallback(
@@ -109,6 +117,20 @@ export const WorkflowCanvas: React.FC = () => {
     [deleteConnection]
   );
 
+  // Handle background click to deselect node
+  const handlePaneClick = useCallback(() => {
+    selectNode(null);
+  }, [selectNode]);
+
+  // Get selected node details
+  const selectedNode = currentWorkflow?.nodes.find((n) => n.id === selectedNodeId);
+  const selectedNodeType = selectedNode
+    ? availableNodeTypes.find((nt) => nt.name === selectedNode.type)
+    : null;
+  const selectedNodeExecutionData = selectedNodeId && executionResults
+    ? executionResults[selectedNodeId]
+    : undefined;
+
   if (!currentWorkflow) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -126,6 +148,7 @@ export const WorkflowCanvas: React.FC = () => {
         onEdgesChange={onEdgesChange}
         onConnect={handleConnect}
         onEdgesDelete={handleEdgesDelete}
+        onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         fitView
       >
@@ -154,6 +177,19 @@ export const WorkflowCanvas: React.FC = () => {
           </Button>
         </Panel>
       </ReactFlow>
+
+      {/* Node Detail View */}
+      {selectedNode && selectedNodeType && (
+        <NodeDetailView
+          node={selectedNode}
+          nodeTypeName={selectedNodeType.displayName}
+          properties={selectedNodeType.properties}
+          executionData={selectedNodeExecutionData}
+          onClose={() => selectNode(null)}
+          onUpdate={(parameters) => updateNode(selectedNode.id, { parameters })}
+          onExecute={currentWorkflow.id ? executeWorkflow : undefined}
+        />
+      )}
     </div>
   );
 };

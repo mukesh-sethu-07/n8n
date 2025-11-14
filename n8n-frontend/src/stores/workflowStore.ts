@@ -8,6 +8,11 @@ interface WorkflowState {
   workflows: IWorkflow[];
   nodeTypes: INodeTypeMetadata[];
 
+  // Node selection and execution
+  selectedNodeId: string | null;
+  executionResults: Record<string, Array<{ json: Record<string, unknown> }>> | null;
+  lastExecutionId: string | null;
+
   // Loading states
   isLoading: boolean;
   isSaving: boolean;
@@ -30,6 +35,9 @@ interface WorkflowState {
   addConnection: (connection: IConnection) => void;
   deleteConnection: (sourceNodeId: string, targetNodeId: string) => void;
 
+  // Node selection
+  selectNode: (nodeId: string | null) => void;
+
   // Reset
   resetWorkflow: () => void;
 }
@@ -38,6 +46,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   currentWorkflow: null,
   workflows: [],
   nodeTypes: [],
+  selectedNodeId: null,
+  executionResults: null,
+  lastExecutionId: null,
   isLoading: false,
   isSaving: false,
   isExecuting: false,
@@ -129,8 +140,12 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
     set({ isExecuting: true });
     try {
-      await executionsApi.execute(currentWorkflow.id);
-      set({ isExecuting: false });
+      const execution = await executionsApi.execute(currentWorkflow.id);
+      set({
+        isExecuting: false,
+        executionResults: execution.data as Record<string, Array<{ json: Record<string, unknown> }>>,
+        lastExecutionId: execution.id,
+      });
     } catch (error) {
       console.error('Failed to execute workflow:', error);
       set({ isExecuting: false });
@@ -222,7 +237,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     });
   },
 
+  selectNode: (nodeId: string | null) => {
+    set({ selectedNodeId: nodeId });
+  },
+
   resetWorkflow: () => {
-    set({ currentWorkflow: null });
+    set({ currentWorkflow: null, selectedNodeId: null, executionResults: null });
   },
 }));
