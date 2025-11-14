@@ -70,8 +70,8 @@ export class ExpressionEngine {
           active: context.workflow.active,
         },
 
-        // Access other nodes' data
-        $node: this.createNodeAccessor(context.nodeOutputs),
+        // Access other nodes' data (by ID or name)
+        $node: this.createNodeAccessor(context.nodeOutputs, context.workflow),
 
         // Utility functions
         $now: Date.now(),
@@ -96,25 +96,46 @@ export class ExpressionEngine {
 
   /**
    * Create an accessor object for $node variable
-   * Allows: $node["NodeName"].json or $node.NodeName.json
+   * Allows: $node["NodeName"].json or $node["node_id"].json
+   * Supports both node names AND node IDs for flexibility
    */
   private createNodeAccessor(
-    nodeOutputs: Record<string, INodeExecutionData[][]>
+    nodeOutputs: Record<string, INodeExecutionData[][]>,
+    workflow: IWorkflow
   ): Record<string, unknown> {
     const accessor: Record<string, unknown> = {};
 
+    // Create a map of node ID to node name
+    const nodeIdToName = new Map<string, string>();
+    const nodeNameToId = new Map<string, string>();
+
+    for (const node of workflow.nodes) {
+      nodeIdToName.set(node.id, node.name);
+      nodeNameToId.set(node.name, node.id);
+    }
+
+    // Create accessor for each node by both ID and name
     for (const [nodeId, outputs] of Object.entries(nodeOutputs)) {
       // Get the first output and first item (most common case)
       const firstOutput = outputs[0] || [];
       const firstItem = firstOutput[0];
 
       if (firstItem) {
-        accessor[nodeId] = {
+        const nodeData = {
           json: firstItem.json,
           binary: firstItem.binary || {},
           itemIndex: 0,
           all: firstOutput, // Access to all items
         };
+
+        // Add by node ID
+        accessor[nodeId] = nodeData;
+
+        // Also add by node name for user convenience
+        const nodeName = nodeIdToName.get(nodeId);
+        if (nodeName) {
+          accessor[nodeName] = nodeData;
+        }
       }
     }
 

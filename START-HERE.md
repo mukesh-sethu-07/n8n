@@ -63,19 +63,33 @@ Open your browser to: **http://localhost:3000**
 - Drag nodes from the right "Nodes" palette
 - Drop them onto the canvas
 
-### 3. Connect Nodes
+### 3. Configure Nodes (NEW!)
+- **Click any node** to open the Node Detail View (NDV)
+- Configure parameters in the Parameters tab
+- Use expressions for dynamic data: `{{ $json.field }}`
+- See help panel for expression syntax
+- Close NDV by clicking X or clicking canvas background
+
+### 4. Connect Nodes
 - Drag from a node's right handle (output)
 - Connect to another node's left handle (input)
 - Create your workflow logic!
 
-### 4. Save Workflow
+### 5. Save Workflow
 - Click "Save" button in top-right
 - Workflow is persisted to SQLite database
 
-### 5. Execute Workflow
+### 6. Execute Workflow
 - Click "Execute" button
 - Watch your workflow run!
-- Check backend terminal for execution logs
+- Click nodes to see results in the Output tab
+
+### 7. View Execution History (NEW!)
+- Click "Executions" tab in navigation
+- See all past workflow runs
+- Filter by status (success/error/all)
+- Click any execution to view details
+- Debug errors with detailed error messages
 
 ## 📦 Available Nodes
 
@@ -86,6 +100,54 @@ Open your browser to: **http://localhost:3000**
 5. **IF** 🟢 - Conditional logic (2 outputs: true/false)
 6. **Switch** 🟡 - Multi-way routing (4 outputs)
 7. **Merge** 🔷 - Combine multiple inputs
+
+## 🔮 Expression System (NEW!)
+
+Build dynamic workflows with the `{{ }}` expression syntax:
+
+### Available Variables
+- `$json.fieldName` - Access current item data
+- `$node["NodeName"].json` - Access previous node output
+- `$itemIndex` - Current item index (0-based)
+- `$now` - Current timestamp
+- `$today` - Today's date (YYYY-MM-DD)
+
+### Examples
+```javascript
+// Access data from current item
+{{ $json.email }}
+
+// Use data from previous node
+{{ $node["Set"].json.url }}
+
+// Perform calculations
+{{ $json.price * 1.2 }}
+
+// Combine strings
+{{ $json.firstName + " " + $json.lastName }}
+
+// Conditional logic
+{{ $json.age >= 18 ? "adult" : "minor" }}
+
+// Inline expressions
+Hello {{ $json.name }}, your score is {{ $json.score }}
+```
+
+### Quick Test
+1. Create workflow: **Start → Set → HTTP Request**
+2. **Set node** parameters:
+   ```json
+   {
+     "url": "https://api.github.com/users/octocat",
+     "userName": "octocat"
+   }
+   ```
+3. **HTTP Request node** parameters:
+   - Method: `GET`
+   - URL: `{{ $node["Set"].json.url }}`
+4. Execute and see the expression resolved!
+
+**💡 Tip:** Click the "Expression Syntax Help" in the Node Detail View for more examples!
 
 ## 🛠️ Development Commands
 

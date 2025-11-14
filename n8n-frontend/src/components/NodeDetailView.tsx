@@ -3,6 +3,7 @@ import type { INode, INodeProperty } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { ExpressionHelp } from './ExpressionHelp';
 import { X, Play, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -172,6 +173,9 @@ export const NodeDetailView: React.FC<NodeDetailViewProps> = ({
       <div className="flex-1 overflow-auto">
         {activeTab === 'parameters' ? (
           <div className="p-6 space-y-6">
+            {/* Expression Help */}
+            <ExpressionHelp />
+
             {properties.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
                 <Info className="w-12 h-12 mx-auto mb-2 opacity-50" />
